@@ -1,5 +1,6 @@
 ytarchive: "F:/Code/code/ytarchiveMgmt/ytarchive.exe"
 
+
 # 代理
 proxy: "http://127.0.0.1:60000"
 
@@ -35,13 +36,16 @@ proxy: "http://127.0.0.1:60000"
 
 output: "F:/测试/{{ name }}/{{ YYYYMMDD }}-{{ HHmmss }}_%(title)s【{{ name }}】"
 
+
 # 输出文件名
 ## 默认 "%(upload_date)s_%(title)s"
 output_file: "{{ YYYYMMDD }}-{{ HHmmss }}_%(title)s"
 
+
 # 配置时间时区
 ## 默认 "UTC"
 output_time_tz: "UTC+8"
+
 
 # 配置项
 ## 其他具体参考 ytarchive 项目下的配置项
@@ -60,8 +64,10 @@ options:
   # 保存封面
   --write-thumbnail: true
 
+
 # 自动录制
 autoRecord: false
+
 
 # 录制用户
 user:

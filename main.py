@@ -1,10 +1,6 @@
 # main.py
 
-import os
-import subprocess
-import threading
-import uvicorn
-import logging
+import re, os, subprocess, threading, uvicorn, logging
 from logging.handlers import TimedRotatingFileHandler
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -13,7 +9,6 @@ from pathlib import Path
 from pydantic import BaseModel
 from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
-import re
 from datetime import datetime, timezone, timedelta
 
 # 设置主程序日志
@@ -72,7 +67,7 @@ def load_config() -> GlobalConfig:
     autoRecord = config_dict.get('autoRecord', False)
     options = config_dict.get('options', {})
     output_time_tz = config_dict.get('output_time_tz', "UTC")
-    output_file = config_dict.get('output_file')  # 从顶层读取 output_file
+    output_file = config_dict.get('output_file')
     users = []
     for user in config_dict.get('user', []):
         id = user.get('id')
@@ -336,7 +331,7 @@ class ChannelProcess:
         解析最近日志, 获取监控或录制的一些信息, 包括录制状态、直播标题、清晰度、开播时间、文件大小等
         """
         status_info = {
-            "recording_state": None,   # 可能的值: "监控中"、"录制中"、None
+            "recording_state": None,
             "video_title": None,
             "quality": None,
             "start_time": None,
@@ -344,13 +339,10 @@ class ChannelProcess:
         }
         
         # 获取当前日志文件以及若干天前的日志文件
-        # logs/ytarchive/{self.config.name}/{self.config.name}.log
         logs_dir = Path(f'logs/ytarchive/{self.config.name}')
         
         # 先检查当前日志文件
         log_files = [logs_dir / f"{self.config.name}.log"]
-        # 再往前几天的归档文件，如 {name}.log.2024-12-31 等
-        # 这里示例检查最近3天
         for i in range(1, 4):
             day = (datetime.now(timezone.utc) - timedelta(days=i)).astimezone(parse_timezone(self.global_config.output_time_tz)).strftime("%Y-%m-%d")
             archived_file = logs_dir / f"{self.config.name}.log.{day}"
@@ -364,7 +356,7 @@ class ChannelProcess:
             lines = []
             with open(log_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-            lines.reverse()  # 从最新一行往前处理
+            lines.reverse()
 
             for line in lines:
                 # 1. 判断是否 "录制中" 的匹配：匹配“Video Fragments: ... Total Downloaded: ...”
@@ -372,7 +364,6 @@ class ChannelProcess:
                 if match_recording:
                     status_info["recording_state"] = "录制中"
                     status_info["file_size"] = match_recording.group(1)  # 例如 "2.80MiB"
-                    # 可以继续往前匹配其他信息
                         
                 # 2. 判断是否 "监控中" 的匹配：匹配 “Retries: 5 (Last retry: ... ), Total time waited: ...”
                 match_monitor = re.search(r"Retries:\s*(\d+).+Total time waited:\s*(\d+)\s*seconds", line)
@@ -380,7 +371,6 @@ class ChannelProcess:
                     # 如果还没发现"录制中"的行，那么可以认为是"监控中"
                     if status_info["recording_state"] is None:
                         status_info["recording_state"] = "监控中"
-                    # 可保存重试次数和总等待时间等信息
 
                 # 3. 匹配“直播标题”
                 match_title = re.search(r"Video Title:\s*(.+)$", line)
@@ -478,12 +468,12 @@ app = FastAPI()
 
 # 定义请求和响应模型
 class ChannelModel(BaseModel):
-    id: str  # 频道ID，必填
-    name: str  # 频道名称，必填
-    proxy: Optional[str] = None  # 代理，可选
-    output: Optional[str] = None  # 输出路径，可选
-    autoRecord: Optional[bool] = None  # 自动录制，可选
-    options: Optional[Dict[str, Any]] = None  # 命令行参数，可选
+    id: str 
+    name: str
+    proxy: Optional[str] = None
+    output: Optional[str] = None
+    autoRecord: Optional[bool] = None
+    options: Optional[Dict[str, Any]] = None
 
 class ChannelStatusModel(BaseModel):
     id: str
@@ -496,7 +486,7 @@ class LogResponseModel(BaseModel):
 
 class DetailedStatusModel(BaseModel):
     running: bool
-    recording_state: Optional[str] = None  # "监控中" / "录制中" / None
+    recording_state: Optional[str] = None
     video_title: Optional[str] = None
     quality: Optional[str] = None
     start_time: Optional[str] = None
