@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>直播间管理</title>
+    <style>
+        /* 页面布局 */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        /* 左侧频道列表样式 */
+        .sidebar {
+            width: 250px;
+            background-color: #f0f0f0;
+            overflow-y: auto;
+            border-right: 1px solid #ccc;
+        }
+        .sidebar-header {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        .sidebar-header button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .channel-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .channel-list li {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #ddd;
+        }
+        .channel-list li:hover {
+            background-color: #e0e0e0;
+        }
+        .channel-list li.active {
+            background-color: #d0d0d0;
+        }
+        /* 右侧内容区域样式 */
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .channel-details {
+            display: none;
+        }
+        .channel-details.active {
+            display: block;
+        }
+        .controls {
+            margin-top: 10px;
+        }
+        .controls button {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .logs {
+            white-space: pre-wrap;
+            background-color: #f5f5f5;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+        }
+        /* 模态对话框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 100px auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 400px;
+            border-radius: 5px;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+        }
+        .modal-content label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .modal-content input[type="text"],
+        .modal-content input[type="checkbox"] {
+            margin-left: 10px;
+        }
+        .modal-content button {
+            margin-top: 10px;
+        }
+        .close-button {
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧频道列表 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button id="open-modal-button">添加新频道</button>
+            </div>
+            <ul class="channel-list" id="channel-list">
+            </ul>
+        </div>
+        <!-- 右侧内容区域 -->
+        <div class="content">
+            <div id="channel-details-container">
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <button class="close-button" id="close-modal-button">&times;</button>
+            <h2>添加新频道</h2>
+            <form id="add-channel-form">
+                <label>频道ID：<input type="text" id="channel-id" required></label>
+                <label>频道名称：<input type="text" id="channel-name" required></label>
+                <label>自动录制：<input type="checkbox" id="channel-autoRecord"></label>
+                <button type="submit">添加频道</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 定义全局变量
+        let channels = [];
+        let currentChannelId = null;
+
+        // 获取频道列表
+        function fetchChannels() {
+            fetch('/channels')
+                .then(response => response.json())
+                .then(data => {
+                    channels = data;
+                    renderChannelList();
+                    if (channels.length > 0) {
+                        // 如果没有选中的频道，默认选中第一个
+                        if (!currentChannelId) {
+                            currentChannelId = channels[0].id;
+                        }
+                        renderChannelDetails(currentChannelId);
+                    } else {
+                        // 没有频道时，清空右侧内容
+                        document.getElementById('channel-details-container').innerHTML = '';
+                        currentChannelId = null;
+                    }
+                })
+                .catch(err => {
+                    console.error("获取频道列表失败:", err);
+                });
+        }
+
+        // 渲染频道列表
+        function renderChannelList() {
+            const channelList = document.getElementById('channel-list');
+            channelList.innerHTML = '';
+            channels.forEach(channel => {
+                const li = document.createElement('li');
+                li.textContent = channel.name;
+                li.dataset.channelId = channel.id;
+                if (channel.id === currentChannelId) {
+                    li.classList.add('active');
+                }
+                li.onclick = () => {
+                    currentChannelId = channel.id;
+                    renderChannelList();
+                    renderChannelDetails(channel.id);
+                };
+                channelList.appendChild(li);
+            });
+        }
+
+        // 渲染频道详细信息
+        function renderChannelDetails(channelId) {
+            const channel = channels.find(c => c.id === channelId);
+            const container = document.getElementById('channel-details-container');
+            container.innerHTML = '';
+            if (channel) {
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'channel-details active';
+                const header = document.createElement('h2');
+                header.textContent = `${channel.name} (${channel.id})`;
+                detailsDiv.appendChild(header);
+                
+                // 显示进程状态
+                const statusP = document.createElement('p');
+                if (channel.running) {
+                    statusP.textContent = `进程状态：运行中 (PID: ${channel.pid})`;
+                } else {
+                    statusP.textContent = `进程状态：已停止`;
+                }
+                detailsDiv.appendChild(statusP);
+
+                // 新增一个 <p> 用来放“录制状态”
+                const recordingStatusP = document.createElement('p');
+                recordingStatusP.textContent = `录制状态：--`;
+                detailsDiv.appendChild(recordingStatusP);
+
+                const extraInfoDiv = document.createElement('div');
+                extraInfoDiv.innerHTML = `
+                  <p id="videoTitle">直播标题：--</p>
+                  <p id="quality">录制清晰度：--</p>
+                  <p id="startTime">开播时间：--</p>
+                  <p id="fileSize">当前文件大小：--</p>
+                `;
+                detailsDiv.appendChild(extraInfoDiv);
+
+                // 加载监控或录制状态的详细信息
+                if (channel.running) {
+                    fetch(`/channels/${channel.id}/status`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.recording_state === "监控中") {
+                                recordingStatusP.textContent = `录制状态：监控中`;
+                            } else if (data.recording_state === "录制中") {
+                                recordingStatusP.textContent = `录制状态：录制中`;
+                            } else {
+                                // 如果既不是监控也不是录制，那么就留空或显示“无”
+                                recordingStatusP.textContent = `录制状态：无`;
+                            }
+
+                            if (data.video_title) {
+                                document.getElementById('videoTitle').textContent = `直播标题：${data.video_title}`;
+                            }
+                            if (data.quality) {
+                                document.getElementById('quality').textContent = `录制清晰度：${data.quality}`;
+                            }
+                            if (data.start_time) {
+                                document.getElementById('startTime').textContent = `开播时间：${data.start_time}`;
+                            }
+                            if (data.file_size) {
+                                document.getElementById('fileSize').textContent = `当前文件大小：${data.file_size}`;
+                            }
+                        })
+                        .catch(err => {
+                            console.error("获取录制状态失败:", err);
+                        });
+                }
+
+                const controls = document.createElement('div');
+                controls.className = 'controls';
+
+                const startButton = document.createElement('button');
+                startButton.textContent = '启动监控';
+                startButton.disabled = channel.running;
+                startButton.onclick = () => startChannel(channel.id);
+
+                const stopButton = document.createElement('button');
+                stopButton.textContent = '停止监控';
+                stopButton.disabled = !channel.running;
+                stopButton.onclick = () => stopChannel(channel.id);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '删除频道';
+                deleteButton.onclick = () => deleteChannel(channel.id);
+
+                const viewLogsButton = document.createElement('button');
+                viewLogsButton.textContent = '查看日志';
+                viewLogsButton.onclick = () => fetchLogs(channel.id);
+
+                controls.appendChild(startButton);
+                controls.appendChild(stopButton);
+                controls.appendChild(deleteButton);
+                controls.appendChild(viewLogsButton);
+
+                detailsDiv.appendChild(controls);
+
+                const logsContainer = document.createElement('div');
+                logsContainer.id = 'logs-container';
+                detailsDiv.appendChild(logsContainer);
+
+                container.appendChild(detailsDiv);
+            }
+        }
+
+        // 启动频道监控
+        function startChannel(channelId) {
+            fetch(`/channels/${channelId}/start`, { method: 'POST' })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'started') {
+                        alert('频道监控已启动');
+                        fetchChannels();
+                    } else {
+                        alert('启动失败');
+                    }
+                })
+                .catch(err => {
+                    console.error("启动监控失败:", err);
+                });
+        }
+
+        // 停止频道监控
+        function stopChannel(channelId) {
+            fetch(`/channels/${channelId}/stop`, { method: 'POST' })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'stopped') {
+                        alert('频道监控已停止');
+                        fetchChannels();
+                    } else {
+                        alert('停止失败');
+                    }
+                })
+                .catch(err => {
+                    console.error("停止监控失败:", err);
+                });
+        }
+
+        // 删除频道
+        function deleteChannel(channelId) {
+            if (confirm('确定要删除该频道吗？')) {
+                fetch(`/channels/${channelId}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.status === 'deleted') {
+                            alert('频道已删除');
+                            currentChannelId = null;
+                            fetchChannels();
+                        } else {
+                            alert('删除失败或频道不存在');
+                        }
+                    })
+                    .catch(err => {
+                        console.error("删除频道失败:", err);
+                    });
+            }
+        }
+
+        // 获取并显示日志
+        function fetchLogs(channelId) {
+            fetch(`/channels/${channelId}/logs`)
+                .then(response => response.json())
+                .then(data => {
+                    const logsContainer = document.getElementById('logs-container');
+                    logsContainer.innerHTML = '';
+                    const logsTitle = document.createElement('h3');
+                    logsTitle.textContent = '日志';
+                    logsContainer.appendChild(logsTitle);
+                    const logsPre = document.createElement('pre');
+                    logsPre.className = 'logs';
+                    logsPre.textContent = data.logs.join('\n');
+                    logsContainer.appendChild(logsPre);
+                })
+                .catch(err => {
+                    console.error("获取日志失败:", err);
+                });
+        }
+
+        // 模态对话框逻辑
+        const modal = document.getElementById('modal');
+        const openModalButton = document.getElementById('open-modal-button');
+        const closeModalButton = document.getElementById('close-modal-button');
+
+        openModalButton.onclick = function() {
+            modal.style.display = 'block';
+        }
+
+        closeModalButton.onclick = function() {
+            modal.style.display = 'none';
+            document.getElementById('add-channel-form').reset();
+        }
+
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+                document.getElementById('add-channel-form').reset();
+            }
+        }
+
+        // 添加频道
+        document.getElementById('add-channel-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const id = document.getElementById('channel-id').value.trim();
+            const name = document.getElementById('channel-name').value.trim();
+            const autoRecord = document.getElementById('channel-autoRecord').checked;
+        
+            if (id && name) {
+                const data = {
+                    id: id,
+                    name: name,
+                    autoRecord: autoRecord
+                };
+        
+                fetch('/channels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.status === 'added') {
+                            alert('频道添加成功');
+                            // 关闭模态对话框
+                            modal.style.display = 'none';
+                            // 重置表单
+                            document.getElementById('add-channel-form').reset();
+                            fetchChannels();
+                        } else {
+                            alert('频道已存在');
+                        }
+                    })
+                    .catch(err => {
+                        console.error("添加频道失败:", err);
+                        alert('添加频道失败');
+                    });
+            } else {
+                alert('请输入频道ID和名称');
+            }
+        });                
+        // 初始化，获取频道列表
+        fetchChannels();
+    </script>
+</body>
+</html>

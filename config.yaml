@@ -1,0 +1,74 @@
+ytarchive: "F:/Code/code/ytarchiveMgmt/ytarchive.exe"
+
+# 代理
+proxy: "http://127.0.0.1:60000"
+
+
+# 输出路径
+## 默认 ".\output"
+#
+# {{ name }} 使用 user 内 name 的值
+# {{ id }} 使用 user 内 id 的值
+#
+# {{ YYYY }} 使用当前配置时区的年份
+# {{ MM }} 使用当前配置时区的月份
+# {{ DD }} 使用当前配置时区的日期
+# {{ HH }} 使用当前配置时区的小时
+# {{ mm }} 使用当前配置时区的分钟
+# {{ ss }} 使用当前配置时区的秒
+#
+# {{ YYYYMMDD }} 使用当前配置时区的年月日
+# {{ HHmmss }} 使用当前配置时区的时分秒
+# 
+## 下面这些为 ytarchive 支持的变量
+## 需要 "%(变量名)s" 的格式填写
+# 
+# id (string): Video identifier
+# url (string): Video URL
+# title (string): Video title
+# channel_id (string): ID of the channel
+# channel (string): Full name of the channel the livestream is on
+# upload_date (string: YYYYMMDD): Technically stream start date, UTC timezone - see note below
+# start_date (string: YYYYMMDD): Stream start date, UTC timezone
+# publish_date (string: YYYYMMDD): Stream publish date, UTC timezone
+# description (string): Video description [disallowed for file name format template]
+
+output: "F:/测试/{{ name }}/{{ YYYYMMDD }}-{{ HHmmss }}_%(title)s【{{ name }}】"
+
+# 输出文件名
+## 默认 "%(upload_date)s_%(title)s"
+output_file: "{{ YYYYMMDD }}-{{ HHmmss }}_%(title)s"
+
+# 配置时间时区
+## 默认 "UTC"
+output_time_tz: "UTC+8"
+
+# 配置项
+## 其他具体参考 ytarchive 项目下的配置项
+options:
+  # 监控录制
+  --monitor-channel: true
+  # 开播检查(秒)
+  -r: 30
+  # 将片段数据保留在内存中
+  ## 会多占用内存
+  --no-frag-files: true
+  # 添加元数据
+  --add-metadata: true
+  # 保存描述
+  --write-description: true
+  # 保存封面
+  --write-thumbnail: true
+
+# 自动录制
+autoRecord: false
+
+# 录制用户
+user:
+  - id: "UC7Vl0YiY0rDlovqcCFN4yTA"
+    name: "测试"
+  - id: "UCrV1Hf5r8P148idjoSfrGEQ"
+    name: "結城さくな"
+  - id: "UCk--7D107cvb6PKqAiAK5uQ"
+    name: "猫小夜くろえ"
+    autoRecord: false

@@ -1,0 +1,5 @@
+/backup
+/logs
+*.ini
+* copy.*
+*.exe
