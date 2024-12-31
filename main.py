@@ -11,7 +11,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 from datetime import datetime, timedelta
 
-# 设置主程序日志
+# 主程序日志
 main_logs_dir = Path('logs/main')
 main_logs_dir.mkdir(parents=True, exist_ok=True)
 main_log_file = main_logs_dir / 'main.log'
@@ -23,9 +23,7 @@ main_handler.setFormatter(main_formatter)
 main_logger.addHandler(main_handler)
 
 class ChannelConfig:
-    """
-    频道配置, 存储每个频道的配置信息
-    """
+    """频道配置，存储每个频道的配置信息"""
     def __init__(self, id: str, name: str, proxy: Optional[str] = None, output: Optional[str] = None,
                  autoRecord: Optional[bool] = None, options: Dict[str, Any] = None):
         self.id = id
@@ -36,9 +34,7 @@ class ChannelConfig:
         self.options = options or {}
 
 class GlobalConfig:
-    """
-    全局配置, 存储程序的全局配置信息
-    """
+    """全局配置，存储程序的全局配置信息"""
     def __init__(self, ytarchive: str, proxy: Optional[str] = None, output: Optional[str] = None,
                  autoRecord: Optional[bool] = None, options: Dict[str, Any] = None,
                  users: List[ChannelConfig] = None, output_file: Optional[str] = None):
@@ -51,6 +47,7 @@ class GlobalConfig:
         self.output_file = output_file
 
 def load_config() -> GlobalConfig:
+    """加载配置文件"""
     try:
         yaml = YAML()
         yaml.preserve_quotes = True
@@ -68,15 +65,13 @@ def load_config() -> GlobalConfig:
     output_file = config_dict.get('output_file')
     users = []
     for user in config_dict.get('user', []):
-        id = user.get('id')
-        name = user.get('name')
-        user_proxy = user.get('proxy')
-        user_output = user.get('output')
-        user_autoRecord = user.get('autoRecord')
-        user_options = user.get('options', {})
         channel = ChannelConfig(
-            id=id, name=name, proxy=user_proxy, output=user_output,
-            autoRecord=user_autoRecord, options=user_options
+            id=user.get('id'),
+            name=user.get('name'),
+            proxy=user.get('proxy'),
+            output=user.get('output'),
+            autoRecord=user.get('autoRecord'),
+            options=user.get('options', {})
         )
         users.append(channel)
     global_config = GlobalConfig(
@@ -87,17 +82,11 @@ def load_config() -> GlobalConfig:
     return global_config
 
 def save_config():
-    """
-    保存配置到 config.yaml，保留注释和格式
-    """
+    """保存配置到 config.yaml，保留注释和格式"""
     yaml = YAML()
-    # 保留引号
     yaml.preserve_quotes = True
-    # 允许 Unicode 字符
     yaml.allow_unicode = True
-    # 设置行宽，防止自动换行
     yaml.width = 1000
-    # 设置缩进
     yaml.indent(mapping=2, sequence=4, offset=2)
 
     try:
@@ -107,7 +96,6 @@ def save_config():
         main_logger.error("配置文件 config.yaml 未找到")
         return
 
-    # 全局配置项
     if global_config.ytarchive:
         config_dict['ytarchive'] = DoubleQuotedScalarString(global_config.ytarchive)
     if global_config.proxy:
@@ -123,11 +111,9 @@ def save_config():
     config_dict['autoRecord'] = global_config.autoRecord
     config_dict['options'] = global_config.options
 
-    # 用户列表
     existing_users = config_dict.get('user', [])
     existing_user_ids = [user.get('id') for user in existing_users]
 
-    # 遍历程序中的用户列表，检查是否有新用户
     for user in global_config.users:
         if user.id not in existing_user_ids:
             user_dict = {
@@ -150,14 +136,12 @@ def save_config():
         yaml.dump(config_dict, f)
 
 class ChannelProcess:
-    """
-    频道进程类，管理每个频道的 ytarchive 进程
-    """
+    """频道进程类，管理每个频道的 ytarchive 进程"""
     def __init__(self, config: ChannelConfig, global_config: GlobalConfig):
         self.config = config
         self.global_config = global_config
         self.process = None
-        self.pid = None  # 初始化 PID
+        self.pid = None
         self.thread = None
         self.logger = None
         self.running = False
@@ -165,17 +149,13 @@ class ChannelProcess:
         self.log_lock = threading.Lock()
 
     def start(self):
-        """
-        启动 ytarchive 进程
-        """
+        """启动 ytarchive 进程"""
         cmd = self.build_command()
         self.setup_logging()
         try:
-            # 启动进程
             self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
             self.pid = self.process.pid
             self.running = True
-            # 启动线程读取输出
             self.thread = threading.Thread(target=self.read_output, daemon=True)
             self.thread.start()
             main_logger.info(f"已启动频道 {self.config.name} ({self.config.id}) 的监控，PID: {self.pid}")
@@ -183,9 +163,7 @@ class ChannelProcess:
             main_logger.error(f"启动频道 {self.config.name} ({self.config.id}) 的进程时出错：{e}")
 
     def stop(self):
-        """
-        停止 ytarchive 进程
-        """
+        """停止 ytarchive 进程"""
         if self.process and self.running:
             self.process.terminate()
             self.process.wait()
@@ -196,13 +174,10 @@ class ChannelProcess:
             main_logger.info(f"已停止频道 {self.config.name} ({self.config.id}) 的监控")
 
     def build_command(self) -> List[str]:
-        """
-        构建 ytarchive 命令行参数
-        """
+        """构建 ytarchive 命令行参数"""
         ytarchive_path = self.global_config.ytarchive
         cmd = [ytarchive_path]
 
-        # 合并全局和频道的选项
         combined_options = self.global_config.options.copy()
         combined_options.update(self.config.options)
 
@@ -213,33 +188,26 @@ class ChannelProcess:
             else:
                 cmd.extend([option, str(value)])
 
-        # 输出路径
         output_template = self.config.output or self.global_config.output
         if not output_template:
             output_template = '{{ name }}_{{ id }}'
 
-        # 替换 {{ name }} 和 {{ id }}
         output_path = output_template.replace('{{ id }}', self.config.id).replace('{{ name }}', self.config.name)
         output_path = os.path.normpath(output_path)
 
-        # 如果是相对路径, 输出到运行目录 'output' 文件夹
         if not os.path.isabs(output_path):
             output_path = os.path.join(os.getcwd(), 'output', output_path)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        # 使用配置中的 output_file
-        # 优先使用频道的 output_file，没有则使用全局配置的
         output_file_template = self.config.options.get('output_file') or self.global_config.output_file or "%(upload_date)s_%(title)s"
         output_path = os.path.join(output_path, output_file_template)
 
         cmd.extend(['-o', output_path])
 
-        # 代理设置
         proxy = self.config.proxy or self.global_config.proxy
         if proxy:
             cmd.extend(['--proxy', proxy])
 
-        # 添加频道URL
         channel_url = f'https://www.youtube.com/channel/{self.config.id}/live'
         cmd.append(channel_url)
         cmd.append('best')
@@ -247,9 +215,7 @@ class ChannelProcess:
         return cmd
 
     def setup_logging(self):
-        """
-        设置频道的日志记录
-        """
+        """设置频道的日志记录"""
         logs_dir = Path(f'logs/ytarchive/{self.config.name}')
         logs_dir.mkdir(parents=True, exist_ok=True)
         log_file = logs_dir / f'{self.config.name}.log'
@@ -262,9 +228,7 @@ class ChannelProcess:
             self.logger.addHandler(handler)
 
     def read_output(self):
-        """
-        读取 ytarchive 进程的输出
-        """
+        """读取 ytarchive 进程的输出"""
         while self.running and self.process.poll() is None:
             line = self.process.stdout.readline()
             if line:
@@ -276,9 +240,7 @@ class ChannelProcess:
         self.running = False
 
     def parse_latest_status(self) -> dict:
-        """
-        解析最近日志, 获取监控或录制的一些信息, 包括录制状态、直播标题、清晰度、开播时间、文件大小等
-        """
+        """解析最近日志，获取录制状态、直播标题、清晰度、开播时间、文件大小等信息"""
         status_info = {
             "recording_state": None,
             "video_title": None,
@@ -287,73 +249,56 @@ class ChannelProcess:
             "file_size": None,
         }
         
-        # 获取当前日志文件以及若干天前的日志文件
         logs_dir = Path(f'logs/ytarchive/{self.config.name}')
-        
-        # 先检查当前日志文件
         log_files = [logs_dir / f"{self.config.name}.log"]
         for i in range(1, 4):
             day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
             archived_file = logs_dir / f"{self.config.name}.log.{day}"
             log_files.append(archived_file)
 
-        # 从最新文件开始往前找，只要匹配到就可以停止
         for log_file in log_files:
             if not log_file.exists():
                 continue
-            # 读取行，并从结尾往前匹配
-            lines = []
             with open(log_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             lines.reverse()
 
             for line in lines:
-                # 1. 判断是否 "录制中" 的匹配：匹配“Video Fragments: ... Total Downloaded: ...”
                 match_recording = re.search(r"Video Fragments:\s*\d+;\s*Audio Fragments:\s*\d+;\s*Total Downloaded:\s*(\S+)", line)
                 if match_recording:
                     status_info["recording_state"] = "录制中"
                     status_info["file_size"] = match_recording.group(1)
                         
-                # 2. 判断是否 "监控中" 的匹配：匹配 “Retries: 5 (Last retry: ... ), Total time waited: ...”
                 match_monitor = re.search(r"Retries:\s*(\d+).+Total time waited:\s*(\d+)\s*seconds", line)
-                if match_monitor:
-                    if status_info["recording_state"] is None:
-                        status_info["recording_state"] = "监控中"
+                if match_monitor and status_info["recording_state"] is None:
+                    status_info["recording_state"] = "监控中"
 
-                # 3. 匹配“直播标题”
                 match_title = re.search(r"Video Title:\s*(.+)$", line)
                 if match_title and not status_info["video_title"]:
                     status_info["video_title"] = match_title.group(1).strip()
 
-                # 4. 匹配“录制清晰度”
                 match_quality = re.search(r"Selected quality:\s*(.+)$", line)
                 if match_quality and not status_info["quality"]:
                     status_info["quality"] = match_quality.group(1).strip()
 
-                # 5. 匹配“开播时间”
                 match_start_time = re.search(r"Stream started at time\s*(.+)$", line)
                 if match_start_time and not status_info["start_time"]:
                     status_info["start_time"] = match_start_time.group(1).strip()
 
-            # 如果已经拿到需要的全部字段，可以 break
             if any(status_info.values()):
                 break
 
         return status_info
 
 class ChannelManager:
-    """
-    频道管理器, 管理多个频道的 ytarchive 进程
-    """
+    """频道管理器，管理多个频道的 ytarchive 进程"""
     def __init__(self, global_config: GlobalConfig):
         self.global_config = global_config
         self.channels: Dict[str, ChannelProcess] = {}
         self.load_channels()
 
     def load_channels(self):
-        """
-        加载配置并初始化频道
-        """
+        """加载配置并初始化频道"""
         for channel_config in self.global_config.users:
             channel_process = ChannelProcess(channel_config, self.global_config)
             self.channels[channel_config.id] = channel_process
@@ -364,25 +309,19 @@ class ChannelManager:
                 channel_process.start()
 
     def start_channel(self, channel_id: str):
-        """
-        启动指定频道的监控
-        """
+        """启动指定频道的监控"""
         channel_process = self.channels.get(channel_id)
         if channel_process and not channel_process.running:
             channel_process.start()
 
     def stop_channel(self, channel_id: str):
-        """
-        停止指定频道的监控
-        """
+        """停止指定频道的监控"""
         channel_process = self.channels.get(channel_id)
         if channel_process and channel_process.running:
             channel_process.stop()
 
     def add_channel(self, channel_config: ChannelConfig) -> bool:
-        """
-        添加新频道
-        """
+        """添加新频道"""
         if channel_config.id in self.channels:
             return False
         self.global_config.users.append(channel_config)
@@ -397,9 +336,7 @@ class ChannelManager:
         return True
 
     def remove_channel(self, channel_id: str) -> bool:
-        """
-        删除指定频道
-        """
+        """删除指定频道"""
         channel_process = self.channels.pop(channel_id, None)
         if channel_process:
             channel_process.stop()
@@ -458,13 +395,13 @@ async def get_channels():
         channel_status_list.append(status)
     return channel_status_list
 
-# 启动监控
+# 启动频道监控
 @app.post("/channels/{channel_id}/start")
 async def start_channel(channel_id: str):
     manager.start_channel(channel_id)
     return {"status": "started", "channel_id": channel_id}
 
-# 停止监控
+# 停止频道监控
 @app.post("/channels/{channel_id}/stop")
 async def stop_channel(channel_id: str):
     manager.stop_channel(channel_id)
@@ -473,10 +410,7 @@ async def stop_channel(channel_id: str):
 # 添加新频道
 @app.post("/channels")
 async def add_channel(channel: ChannelModel):
-    """
-    添加新频道的接口
-    只需要提供频道ID和频道名称，其他字段为可选
-    """
+    """根据 autoRecord 的值决定是否使用全局设置"""
     options = channel.options or {}
     channel_config = ChannelConfig(
         id=channel.id,
@@ -530,7 +464,6 @@ async def get_channel_status(channel_id: str):
         raise HTTPException(status_code=404, detail="Channel not found")
 
     if not channel_process.running:
-        # 如果进程都没启动，就直接返回 stopped 的信息
         return DetailedStatusModel(
             running=False,
             recording_state=None,
@@ -540,7 +473,6 @@ async def get_channel_status(channel_id: str):
             file_size=None
         )
 
-    # 如果正在运行, 去解析日志拿到相关信息
     status_info = channel_process.parse_latest_status()
     return DetailedStatusModel(
         running=True,

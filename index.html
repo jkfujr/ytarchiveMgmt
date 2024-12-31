@@ -80,7 +80,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        /* 对话框 */
+        /* 模态框 */
         .modal {
             display: none;
             position: fixed;
@@ -107,8 +107,17 @@
             display: block;
             margin-bottom: 10px;
         }
+        .modal-content fieldset {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .modal-content legend {
+            padding: 0 5px;
+            font-weight: bold;
+        }
         .modal-content input[type="text"],
-        .modal-content input[type="checkbox"] {
+        .modal-content input[type="radio"] {
             margin-left: 10px;
         }
         .modal-content button {
@@ -144,14 +153,29 @@
         </div>
     </div>
 
-    <div id="modal" class="modal">
+    <!-- 添加新频道模态框 -->
+    <div id="add-channel-modal" class="modal">
         <div class="modal-content">
             <button class="close-button" id="close-modal-button">&times;</button>
             <h2>添加新频道</h2>
             <form id="add-channel-form">
                 <label>频道ID：<input type="text" id="channel-id" required></label>
                 <label>频道名称：<input type="text" id="channel-name" required></label>
-                <label>自动录制：<input type="checkbox" id="channel-autoRecord"></label>
+                <fieldset>
+                    <legend>自动录制：</legend>
+                    <label>
+                        <input type="radio" name="autoRecordOption" value="global" checked>
+                        全局
+                    </label>
+                    <label>
+                        <input type="radio" name="autoRecordOption" value="enable">
+                        启用
+                    </label>
+                    <label>
+                        <input type="radio" name="autoRecordOption" value="disable">
+                        禁用
+                    </label>
+                </fieldset>
                 <button type="submit">添加频道</button>
             </form>
         </div>
@@ -164,6 +188,34 @@
         let autoRefreshLogs = true;
         let autoScrollLogs = true;
         let logsRefreshInterval = null;
+
+        // 通用模态框控制函数
+        function toggleModal(modalId, show) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        // 绑定打开和关闭按钮
+        document.getElementById('open-modal-button').onclick = function() {
+            toggleModal('add-channel-modal', true);
+        }
+
+        document.getElementById('close-modal-button').onclick = function() {
+            toggleModal('add-channel-modal', false);
+            document.getElementById('add-channel-form').reset();
+            document.querySelector('input[name="autoRecordOption"][value="global"]').checked = true;
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('add-channel-modal');
+            if (event.target === modal) {
+                toggleModal('add-channel-modal', false);
+                document.getElementById('add-channel-form').reset();
+                document.querySelector('input[name="autoRecordOption"][value="global"]').checked = true;
+            }
+        }
 
         // 获取频道列表
         function fetchChannels() {
@@ -221,11 +273,7 @@
                 
                 // 进程状态
                 const statusP = document.createElement('p');
-                if (channel.running) {
-                    statusP.textContent = `进程状态：运行中 (PID: ${channel.pid})`;
-                } else {
-                    statusP.textContent = `进程状态：已停止`;
-                }
+                statusP.textContent = channel.running ? `进程状态：运行中 (PID: ${channel.pid})` : `进程状态：已停止`;
                 detailsDiv.appendChild(statusP);
 
                 // 录制信息
@@ -281,14 +329,9 @@
                 deleteButton.textContent = '删除频道';
                 deleteButton.onclick = () => deleteChannel(channel.id);
 
-                const viewLogsButton = document.createElement('button');
-                viewLogsButton.textContent = '查看日志';
-                viewLogsButton.onclick = () => fetchLogs(channel.id);
-
                 controls.appendChild(startButton);
                 controls.appendChild(stopButton);
                 controls.appendChild(deleteButton);
-                controls.appendChild(viewLogsButton);
 
                 detailsDiv.appendChild(controls);
 
@@ -360,7 +403,7 @@
                     const logsContent = document.getElementById('logs-content');
                     logsContent.textContent = data.logs.join('\n') || '暂无日志';
                     if (autoScrollLogs) {
-                        logsContent.scrollTop = logsContent.scrollHeight; // 滚动到末尾
+                        logsContent.scrollTop = logsContent.scrollHeight;
                     }
                 })
                 .catch(err => {
@@ -370,38 +413,30 @@
 
         // 初始化日志区域
         function initializeLogs(channelId) {
-            if (channels.length > 0) {
-                const channel = channels.find(c => c.id === channelId);
-                if (channel && channel.running) {
-                    fetch(`/channels/${channel.id}/status`)
-                        .then(res => res.json())
-                        .then(data => {
-                            const recordingStatusP = document.querySelector('.channel-details.active p:nth-child(3)');
-                            if (data.recording_state === "监控中") {
-                                recordingStatusP.textContent = `录制状态：监控中`;
-                            } else if (data.recording_state === "录制中") {
-                                recordingStatusP.textContent = `录制状态：录制中`;
-                            } else {
-                                recordingStatusP.textContent = `录制状态：无`;
-                            }
+            const channel = channels.find(c => c.id === channelId);
+            if (channel && channel.running) {
+                fetch(`/channels/${channel.id}/status`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const recordingStatusP = document.querySelector('.channel-details.active p:nth-child(3)');
+                        recordingStatusP.textContent = `录制状态：${data.recording_state || '无'}`;
 
-                            if (data.video_title) {
-                                document.getElementById('videoTitle').textContent = `直播标题：${data.video_title}`;
-                            }
-                            if (data.quality) {
-                                document.getElementById('quality').textContent = `录制清晰度：${data.quality}`;
-                            }
-                            if (data.start_time) {
-                                document.getElementById('startTime').textContent = `开播时间：${data.start_time}`;
-                            }
-                            if (data.file_size) {
-                                document.getElementById('fileSize').textContent = `当前文件大小：${data.file_size}`;
-                            }
-                        })
-                        .catch(err => {
-                            console.error("获取录制状态失败:", err);
-                        });
-                }
+                        if (data.video_title) {
+                            document.getElementById('videoTitle').textContent = `直播标题：${data.video_title}`;
+                        }
+                        if (data.quality) {
+                            document.getElementById('quality').textContent = `录制清晰度：${data.quality}`;
+                        }
+                        if (data.start_time) {
+                            document.getElementById('startTime').textContent = `开播时间：${data.start_time}`;
+                        }
+                        if (data.file_size) {
+                            document.getElementById('fileSize').textContent = `当前文件大小：${data.file_size}`;
+                        }
+                    })
+                    .catch(err => {
+                        console.error("获取录制状态失败:", err);
+                    });
             }
 
             fetchLogs(channelId);
@@ -424,7 +459,6 @@
                 });
             }
 
-            // 自动刷新
             if (autoRefreshLogs) {
                 startAutoRefreshLogs(channelId);
             }
@@ -440,13 +474,7 @@
                             .then(res => res.json())
                             .then(data => {
                                 const recordingStatusP = document.querySelector('.channel-details.active p:nth-child(3)');
-                                if (data.recording_state === "监控中") {
-                                    recordingStatusP.textContent = `录制状态：监控中`;
-                                } else if (data.recording_state === "录制中") {
-                                    recordingStatusP.textContent = `录制状态：录制中`;
-                                } else {
-                                    recordingStatusP.textContent = `录制状态：无`;
-                                }
+                                recordingStatusP.textContent = `录制状态：${data.recording_state || '无'}`;
 
                                 if (data.video_title) {
                                     document.getElementById('videoTitle').textContent = `直播标题：${data.video_title}`;
@@ -477,66 +505,52 @@
             }
         }
 
-        // 模态对话框逻辑
-        const modal = document.getElementById('modal');
-        const openModalButton = document.getElementById('open-modal-button');
-        const closeModalButton = document.getElementById('close-modal-button');
-
-        openModalButton.onclick = function() {
-            modal.style.display = 'block';
-        }
-
-        closeModalButton.onclick = function() {
-            modal.style.display = 'none';
-            document.getElementById('add-channel-form').reset();
-        }
-
-        window.onclick = function(event) {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-                document.getElementById('add-channel-form').reset();
-            }
-        }
-
         // 添加频道
         document.getElementById('add-channel-form').addEventListener('submit', function (e) {
             e.preventDefault();
             const id = document.getElementById('channel-id').value.trim();
             const name = document.getElementById('channel-name').value.trim();
-            const autoRecord = document.getElementById('channel-autoRecord').checked;
-        
-            if (id && name) {
-                const data = {
-                    id: id,
-                    name: name,
-                    autoRecord: autoRecord
-                };
-        
-                fetch('/channels', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.status === 'added') {
-                            alert('频道添加成功');
-                            // 关闭模态对话框
-                            modal.style.display = 'none';
-                            // 重置表单
-                            document.getElementById('add-channel-form').reset();
-                            fetchChannels();
-                        } else {
-                            alert('频道已存在');
-                        }
-                    })
-                    .catch(err => {
-                        console.error("添加频道失败:", err);
-                        alert('添加频道失败');
-                    });
+            
+            const autoRecordOption = document.querySelector('input[name="autoRecordOption"]:checked').value;
+            let autoRecord;
+            if (autoRecordOption === 'enable') {
+                autoRecord = true;
+            } else if (autoRecordOption === 'disable') {
+                autoRecord = false;
             } else {
-                alert('请输入频道ID和名称');
+                autoRecord = null; // 使用全局配置
             }
+
+            const data = {
+                id: id,
+                name: name
+            };
+
+            if (autoRecord !== null) {
+                data.autoRecord = autoRecord;
+            }
+
+            fetch('/channels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'added') {
+                        alert('频道添加成功');
+                        toggleModal('add-channel-modal', false);
+                        document.getElementById('add-channel-form').reset();
+                        document.querySelector('input[name="autoRecordOption"][value="global"]').checked = true;
+                        fetchChannels();
+                    } else {
+                        alert('频道已存在');
+                    }
+                })
+                .catch(err => {
+                    console.error("添加频道失败:", err);
+                    alert('添加频道失败');
+                });
         });
 
         // 初始化，获取频道列表
