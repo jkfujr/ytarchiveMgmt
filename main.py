@@ -260,14 +260,13 @@ class ChannelProcess:
             else:
                 cmd.extend([option, str(value)])
 
-        # 构建输出路径
+        # 输出路径
         output_template = self.config.output or self.global_config.output
         if not output_template:
             output_template = '{{ name }}_{{ id }}'
         
         # 替换 {{ name }} 和 {{ id }}
         output_path = output_template.replace('{{ id }}', self.config.id).replace('{{ name }}', self.config.name)
-        # 替换时间变量
         output_path = replace_time_variables(output_path, self.global_config.output_time_tz)
         output_path = os.path.normpath(output_path)
         
@@ -277,15 +276,14 @@ class ChannelProcess:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         # 使用配置中的 output_file
-        # 优先使用频道级别的 output_file，如果没有，则使用全局配置的
+        # 优先使用频道的 output_file，没有则使用全局配置的
         output_file_template = self.config.options.get('output_file') or self.global_config.output_file or "%(upload_date)s_%(title)s"
-        # 替换时间变量
         output_file_template = replace_time_variables(output_file_template, self.global_config.output_time_tz)
         output_path = os.path.join(output_path, output_file_template)
 
         cmd.extend(['-o', output_path])
 
-        # 添加代理设置
+        # 代理设置
         proxy = self.config.proxy or self.global_config.proxy
         if proxy:
             cmd.extend(['--proxy', proxy])
