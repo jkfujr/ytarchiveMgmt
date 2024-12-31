@@ -9,7 +9,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 # 设置主程序日志
 main_logs_dir = Path('logs/main')
@@ -41,14 +41,13 @@ class GlobalConfig:
     """
     def __init__(self, ytarchive: str, proxy: Optional[str] = None, output: Optional[str] = None,
                  autoRecord: Optional[bool] = None, options: Dict[str, Any] = None,
-                 users: List[ChannelConfig] = None, output_time_tz: str = "UTC", output_file: Optional[str] = None):
+                 users: List[ChannelConfig] = None, output_file: Optional[str] = None):
         self.ytarchive = ytarchive
         self.proxy = proxy
         self.output = output
         self.autoRecord = autoRecord
         self.options = options or {}
         self.users = users or []
-        self.output_time_tz = output_time_tz
         self.output_file = output_file
 
 def load_config() -> GlobalConfig:
@@ -66,7 +65,6 @@ def load_config() -> GlobalConfig:
     output = config_dict.get('output')
     autoRecord = config_dict.get('autoRecord', False)
     options = config_dict.get('options', {})
-    output_time_tz = config_dict.get('output_time_tz', "UTC")
     output_file = config_dict.get('output_file')
     users = []
     for user in config_dict.get('user', []):
@@ -84,7 +82,7 @@ def load_config() -> GlobalConfig:
     global_config = GlobalConfig(
         ytarchive=ytarchive, proxy=proxy, output=output,
         autoRecord=autoRecord, options=options, users=users,
-        output_time_tz=output_time_tz, output_file=output_file
+        output_file=output_file
     )
     return global_config
 
@@ -109,19 +107,23 @@ def save_config():
         main_logger.error("配置文件 config.yaml 未找到")
         return
 
-    # 更新全局配置项
+    # 全局配置项
     if global_config.ytarchive:
         config_dict['ytarchive'] = DoubleQuotedScalarString(global_config.ytarchive)
     if global_config.proxy:
         config_dict['proxy'] = global_config.proxy
     if global_config.output:
         config_dict['output'] = global_config.output
-    config_dict['output_time_tz'] = DoubleQuotedScalarString(global_config.output_time_tz)
-    config_dict['output_file'] = global_config.output_file or "%(upload_date)s_%(title)s"
+    config_dict.pop('output_time_tz', None)
+    if global_config.output_file:
+        config_dict['output_file'] = global_config.output_file
+    else:
+        config_dict.pop('output_file', None)
+
     config_dict['autoRecord'] = global_config.autoRecord
     config_dict['options'] = global_config.options
 
-    # 更新用户列表
+    # 用户列表
     existing_users = config_dict.get('user', [])
     existing_user_ids = [user.get('id') for user in existing_users]
 
@@ -146,55 +148,6 @@ def save_config():
 
     with open('config.yaml', 'w', encoding='utf-8') as f:
         yaml.dump(config_dict, f)
-
-def parse_timezone(tz_str: str) -> timezone:
-    """
-    解析时区字符串，如 "UTC", "UTC+8", "UTC-5"。
-    返回一个 timezone 对象。
-    """
-    if tz_str.upper() == "UTC":
-        return timezone.utc
-    match = re.match(r"UTC([+-])(\d+)", tz_str.upper())
-    if match:
-        sign, hours = match.groups()
-        offset_hours = int(hours)
-        if sign == '-':
-            offset_hours = -offset_hours
-        return timezone(timedelta(hours=offset_hours))
-    # 如果格式不匹配，默认返回 UTC
-    return timezone.utc
-
-def replace_time_variables(template: str, tz_str: str = "UTC") -> str:
-    """
-    替换路径或文件名模板中的时间变量。
-    支持以下变量:
-        {{ YYYY }} - 年
-        {{ MM }} - 月
-        {{ DD }} - 日
-        {{ HH }} - 时
-        {{ mm }} - 分
-        {{ ss }} - 秒
-        {{ YYYYMMDD }} - 年月日
-        {{ HHmmss }} - 时分秒
-    支持时区配置，如 "UTC", "UTC+8", "UTC-5"
-    """
-    tz = parse_timezone(tz_str)
-    now = datetime.now(tz)
-    replacements = {
-        "{{ YYYY }}": now.strftime("%Y"),
-        "{{ MM }}": now.strftime("%m"),
-        "{{ DD }}": now.strftime("%d"),
-        "{{ HH }}": now.strftime("%H"),
-        "{{ mm }}": now.strftime("%M"),
-        "{{ ss }}": now.strftime("%S"),
-        "{{ YYYYMMDD }}": now.strftime("%Y%m%d"),
-        "{{ HHmmss }}": now.strftime("%H%M%S"),
-    }
-
-    for key, value in replacements.items():
-        template = template.replace(key, value)
-    
-    return template
 
 class ChannelProcess:
     """
@@ -264,12 +217,11 @@ class ChannelProcess:
         output_template = self.config.output or self.global_config.output
         if not output_template:
             output_template = '{{ name }}_{{ id }}'
-        
+
         # 替换 {{ name }} 和 {{ id }}
         output_path = output_template.replace('{{ id }}', self.config.id).replace('{{ name }}', self.config.name)
-        output_path = replace_time_variables(output_path, self.global_config.output_time_tz)
         output_path = os.path.normpath(output_path)
-        
+
         # 如果是相对路径, 输出到运行目录 'output' 文件夹
         if not os.path.isabs(output_path):
             output_path = os.path.join(os.getcwd(), 'output', output_path)
@@ -278,7 +230,6 @@ class ChannelProcess:
         # 使用配置中的 output_file
         # 优先使用频道的 output_file，没有则使用全局配置的
         output_file_template = self.config.options.get('output_file') or self.global_config.output_file or "%(upload_date)s_%(title)s"
-        output_file_template = replace_time_variables(output_file_template, self.global_config.output_time_tz)
         output_path = os.path.join(output_path, output_file_template)
 
         cmd.extend(['-o', output_path])
@@ -342,7 +293,7 @@ class ChannelProcess:
         # 先检查当前日志文件
         log_files = [logs_dir / f"{self.config.name}.log"]
         for i in range(1, 4):
-            day = (datetime.now(timezone.utc) - timedelta(days=i)).astimezone(parse_timezone(self.global_config.output_time_tz)).strftime("%Y-%m-%d")
+            day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
             archived_file = logs_dir / f"{self.config.name}.log.{day}"
             log_files.append(archived_file)
 
@@ -361,12 +312,11 @@ class ChannelProcess:
                 match_recording = re.search(r"Video Fragments:\s*\d+;\s*Audio Fragments:\s*\d+;\s*Total Downloaded:\s*(\S+)", line)
                 if match_recording:
                     status_info["recording_state"] = "录制中"
-                    status_info["file_size"] = match_recording.group(1)  # 例如 "2.80MiB"
+                    status_info["file_size"] = match_recording.group(1)
                         
                 # 2. 判断是否 "监控中" 的匹配：匹配 “Retries: 5 (Last retry: ... ), Total time waited: ...”
                 match_monitor = re.search(r"Retries:\s*(\d+).+Total time waited:\s*(\d+)\s*seconds", line)
                 if match_monitor:
-                    # 如果还没发现"录制中"的行，那么可以认为是"监控中"
                     if status_info["recording_state"] is None:
                         status_info["recording_state"] = "监控中"
 
@@ -508,13 +458,13 @@ async def get_channels():
         channel_status_list.append(status)
     return channel_status_list
 
-# 启动频道监控
+# 启动监控
 @app.post("/channels/{channel_id}/start")
 async def start_channel(channel_id: str):
     manager.start_channel(channel_id)
     return {"status": "started", "channel_id": channel_id}
 
-# 停止频道监控
+# 停止监控
 @app.post("/channels/{channel_id}/stop")
 async def stop_channel(channel_id: str):
     manager.stop_channel(channel_id)
@@ -572,7 +522,7 @@ async def get_main_logs():
     else:
         return LogResponseModel(logs=[])
 
-# 新增接口：获取频道的详细状态
+# 获取频道的详细状态
 @app.get("/channels/{channel_id}/status", response_model=DetailedStatusModel)
 async def get_channel_status(channel_id: str):
     channel_process = manager.channels.get(channel_id)

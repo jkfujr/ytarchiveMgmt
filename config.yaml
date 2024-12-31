@@ -11,15 +11,6 @@ proxy: "http://127.0.0.1:60000"
 # {{ name }} 使用 user 内 name 的值
 # {{ id }} 使用 user 内 id 的值
 #
-# {{ YYYY }} 使用当前配置时区的年份
-# {{ MM }} 使用当前配置时区的月份
-# {{ DD }} 使用当前配置时区的日期
-# {{ HH }} 使用当前配置时区的小时
-# {{ mm }} 使用当前配置时区的分钟
-# {{ ss }} 使用当前配置时区的秒
-#
-# {{ YYYYMMDD }} 使用当前配置时区的年月日
-# {{ HHmmss }} 使用当前配置时区的时分秒
 # 
 ## 下面这些为 ytarchive 支持的变量
 ## 需要 "%(变量名)s" 的格式填写
@@ -34,17 +25,12 @@ proxy: "http://127.0.0.1:60000"
 # publish_date (string: YYYYMMDD): Stream publish date, UTC timezone
 # description (string): Video description [disallowed for file name format template]
 
-output: "F:/测试/{{ name }}/{{ YYYYMMDD }}-{{ HHmmss }}_%(title)s【{{ name }}】"
+output: "F:/测试/{{ name }}/%(upload_date)s_%(title)s【{{ name }}】"
 
 
 # 输出文件名
 ## 默认 "%(upload_date)s_%(title)s"
-output_file: "{{ YYYYMMDD }}-{{ HHmmss }}_%(title)s"
-
-
-# 配置时间时区
-## 默认 "UTC"
-output_time_tz: "UTC+8"
+output_file: "%(upload_date)s_%(title)s"
 
 
 # 配置项
