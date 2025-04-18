@@ -1,5 +1,6 @@
 /backup
 /logs
+__pycache__
 *.ini
 * copy.*
 *.exe

@@ -1,65 +1,196 @@
-ytarchive: "F:/Code/code/ytarchiveMgmt/ytarchive.exe"
+host: "0.0.0.0"
+port: 45678
 
+# 自动检查状态
+autoCheck: false
+# 检查轮询时间(秒)
+checkInterval: 300
+# 检查后状态是直播则是否开始录制
+autoRecord: true
 
-# 代理
-proxy: "http://127.0.0.1:60000"
-
-
-# 输出路径
-## 默认 ".\output"
-#
-# {{ name }} 使用 user 内 name 的值
-# {{ id }} 使用 user 内 id 的值
-#
-# 
-## 下面这些为 ytarchive 支持的变量
-## 需要 "%(变量名)s" 的格式填写
-# 
-# id (string): Video identifier
-# url (string): Video URL
-# title (string): Video title
-# channel_id (string): ID of the channel
-# channel (string): Full name of the channel the livestream is on
-# upload_date (string: YYYYMMDD): Technically stream start date, UTC timezone - see note below
-# start_date (string: YYYYMMDD): Stream start date, UTC timezone
-# publish_date (string: YYYYMMDD): Stream publish date, UTC timezone
-# description (string): Video description [disallowed for file name format template]
-
-output: "F:/测试/{{ name }}/%(upload_date)s_%(title)s【{{ name }}】"
-
-
-# 输出文件名
-## 默认 "%(upload_date)s_%(title)s"
-output_file: "%(upload_date)s_%(title)s"
-
-
-# 配置项
-## 其他具体参考 ytarchive 项目下的配置项
-options:
-  # 监控录制
-  --monitor-channel: true
-  # 开播检查(秒)
-  -r: 30
-  # 将片段数据保留在内存中
-  ## 会多占用内存
-  --no-frag-files: true
-  # 添加元数据
-  --add-metadata: true
-  # 保存描述
-  --write-description: true
-  # 保存封面
-  --write-thumbnail: true
-
-
-# 自动录制
-autoRecord: false
-
-
-# 录制用户
+# 用户
 user:
   - id: "UC7Vl0YiY0rDlovqcCFN4yTA"
     name: "测试"
-  - id: "UCrV1Hf5r8P148idjoSfrGEQ"
-    name: "結城さくな"
+    autoCheck: false
   - id: "UCk--7D107cvb6PKqAiAK5uQ"
     name: "猫小夜くろえ"
+  - id: "UC5pN7zP6awYB8igfmrOCo0g"
+    name: "鷗麥麥麥"
+  - id: "UCnKt20HH_BiuID0FDHGMcvw"
+    name: "IMI"
+
+
+  - id: "UCY32QZ2pczK5kSroH5zpDnQ"
+    name: "千鈴鳴_Official"
+  - id: "UCuzqZZQ0zILo1ryYPicNs-Q"
+    name: "黒澤マドカ"
+  - id: "UChN7P9OhRltW3w9IesC92PA"
+    name: "森永みうofficial"
+  - id: "UCWCc8tO-uUl_7SJXIKJACMw"
+    name: "神楽Mea_Official"
+  - id: "UCvEX2UICvFAa_T6pqizC20g"
+    name: "乙女音Official"
+  - id: "UCRXBTd80F5IIWWY4HatJ5Ug"
+    name: "花园Serena"
+  - id: "UC0lIq8G4LgDPlXsDmYSUExw"
+    name: "椎名菜羽Official"
+  - id: "UCUKngXhjnKJ6KCyuC7ejI_w"
+    name: "紫桃爱音Official"
+  - id: "UCn14Z641OthNps7vppBvZFA"
+    name: "千草はな"
+  - id: "UCL9dLCVvHyMiqjp2RDgowqQ"
+    name: "高槻律official"
+  - id: "UCH0ObmokE-zUOeihkKwWySA"
+    name: "夢乃栞Yumeno_Shiori"
+  - id: "UCq0vJ6Y4EYFcHyvkL2x6rbQ"
+    name: "猫ゐ咲夜"
+
+  - id: "UCEjysNG2a2UgCBIpJxBqn3w"
+    name: "Tacitly_麟犀"
+  - id: "UCr9p1ZjLKgfaoqNorY7PiWQ"
+    name: "ayamy"
+  - id: "UC6hdjP0rVgCp27DMeY_tQBA"
+    name: "法元明菜"
+  - id: "UC3fz0ZP0pTonMlXOHmAP0oQ"
+    name: "现实miro-official"
+  - id: "UCgLsDNNaTOTXKW8_Wj9NaVA"
+    name: "愛奏ルミナ"
+  - id: "UCim0N3tvLijU_I3jbJeJV8g"
+    name: "rurudo"
+  - id: "UCKQFOEavMqIZwjUSvdK075Q"
+    name: "緩宮みしろ"
+  - id: "UC6ixLgVB4D6ucEXb4VhZ-PA"
+    name: "毒ヶ衣ちなみ"
+  - id: "UCLVq_7YEM-Xg2CcfNakAwhw"
+    name: "土屋李央"
+  - id: "UCq7n-GF0SZ7Pt1NCVfTvIaQ"
+    name: "巫てんり"
+  - id: "UCJqXjoJ1embpEZKwd61JXZA"
+    name: "玲宮にぽ"
+  - id: "UCDtU57hKCMYX65NhsAhKcHA"
+    name: "転生子餅"
+  - id: "UCHXG0QFi6oWIWI7rPVvnT-w"
+    name: "天音マリー"
+  - id: "UCv7hPaqfIM06j3B1vOgSPyg"
+    name: "久々湊るい"
+  - id: "UCPeF0V8dzSUYHwgLjvC86PQ"
+    name: "阳夏诺诺Official"
+  - id: "UCBC7vYFNQoGPupe5NxPG4Bw"
+    name: "久遠たま"
+  - id: "UCX4WL24YEOUYd7qDsFSLDOw"
+    name: "夜乃くろむ"
+  - id: "UC2mo1A_m-sUf7GT_H9TXdsA"
+    name: "こと"
+  - id: "UCe3M7ayftFGVfUUhx_ggMXQ"
+    name: "おむつ姫"
+  - id: "UCBbGcCpI1NmpNdEV1qPQttw"
+    name: "りんこ"
+  - id: "UC93aWyXK1NuUnRumFxU7X3w"
+    name: "YUY"
+  - id: "UCrV1Hf5r8P148idjoSfrGEQ"
+    name: "結城さくな"
+
+  - id: "UCAOhUv73jM5iCpOhuJOQzxA"
+    name: "KAMITSUBAKI STUDIO"
+    autoCheck: false
+  - id: "UCfiSo8tO3WPU-8YOgr4Ba6g"
+    name: "V.W.P"
+    autoCheck: false
+  - id: "UCQ1U65-CQdIoZ2_NA4Z4F7A"
+    name: "花譜"
+    autoCheck: false
+  - id: "UCfBkUgaJ6eqYA9_TX2cmq9A"
+    name: "理芽"
+    autoCheck: false
+  - id: "UCE7gtjLeZKNXLp5YURzYYeg"
+    name: "春猿火"
+    autoCheck: false
+  - id: "UCah4_WVjmr8XA7i5aigwV"
+    name: "ヰ世界情緒"
+    autoCheck: false
+  - id: "UC7Gow-kNHq21oejSIDg9PAg"
+    name: "幸祜"
+    autoCheck: false
+  - id: "UC0w13AZfaxfatdHdF-bhN3Q"
+    name: "佳鏡院"
+
+  - id: "UCN-bFIdJM0gQlgX7h6LKcZA"
+    name: "邦TV"
+  - id: "UCaoat2Vz9i1_wbR7_ctv3bA"
+    name: "Bellmona"
+  - id: "UCPkKpOHxEDcwmUAnRpIu"
+    name: "藍沢エマ"
+
+# 代理
+proxy:
+  # api 代理
+  api: "组1"
+  # yta 代理
+  yta: ""
+  # 代理组列表
+  groups:
+    组1:
+      # 组内代理列表
+      - LC: ""
+      - p1: "http://127.0.0.1:60000"
+
+
+
+
+
+
+
+ytarchive:
+  # yta 路径
+  ytaPath: "F:/Code/code/ytarchiveMgmt/ytarchive.exe"
+
+  # 输出路径
+  ## 默认 ".\output"
+  #
+  # {{ name }} 使用 user 内 name 的值
+  # {{ id }} 使用 user 内 id 的值
+  #
+  # 
+  ## 下面这些为 ytarchive 支持的变量
+  ## 需要 "%(变量名)s" 的格式填写
+  # 
+  # id (string): Video identifier
+  # url (string): Video URL
+  # title (string): Video title
+  # channel_id (string): ID of the channel
+  # channel (string): Full name of the channel the livestream is on
+  # upload_date (string: YYYYMMDD): Technically stream start date, UTC timezone - see note below
+  # start_date (string: YYYYMMDD): Stream start date, UTC timezone
+  # publish_date (string: YYYYMMDD): Stream publish date, UTC timezone
+  # description (string): Video description [disallowed for file name format template]
+
+  output: "F:/录播文件测试/{{ name }}/%(upload_date)s_%(title)s【{{ name }}】"
+
+
+  # 输出文件名
+  ## 默认 "%(upload_date)s_%(title)s"
+  output_file: "%(upload_date)s_%(title)s"
+
+
+  # cookie 配置
+  cookie:
+    enable: true
+    path: ""
+
+  # 配置项
+  ## 其他具体参考 ytarchive 项目下的配置项
+  options:
+    # 监控录制
+    --monitor-channel: true
+    # 开播检查(秒)
+    -r: 60
+    # 将片段数据保留在内存中
+    ## 会多占用内存
+    --no-frag-files: true
+    # 添加元数据
+    --add-metadata: true
+    # 保存描述
+    --write-description: true
+    # 保存封面
+    --write-thumbnail: true
